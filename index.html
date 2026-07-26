@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🩲 Underwear OS — Conforto Disponível</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <style>
+    body {
+      background: linear-gradient(135deg, #181024 0%, #0f172a 100%);
+      color: #f8fafc;
+      min-height: 100vh;
+    }
+    .glass-card {
+      background: rgba(30, 20, 50, 0.75);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+    .drawer-active {
+      box-shadow: 0 0 25px rgba(168, 85, 247, 0.3);
+    }
+  </style>
+</head>
+<body class="p-4 md:p-8 font-sans">
+
+  <div x-data="underwearApp()" x-init="initFirebase()" class="max-w-md mx-auto space-y-5">
+
+    <!-- HEADER: UNDERWEAR OS (GUARDIÃO DE RECURSO CRÍTICO) -->
+    <header class="glass-card rounded-3xl p-6 shadow-xl text-center border border-purple-900/40">
+      <div class="flex justify-between items-center mb-2">
+        <span class="text-xs font-bold uppercase tracking-widest text-purple-400">Casa OS • Guardião Crítico</span>
+        <span x-show="loading" class="text-xs text-purple-300 bg-purple-950/60 px-2.5 py-1 rounded-full animate-pulse border border-purple-800">Sync...</span>
+      </div>
+      <h1 class="text-2xl font-black text-white flex items-center justify-center gap-2">
+        💜 Conforto Disponível
+      </h1>
+      <p class="text-xs text-purple-200/70 mt-1 italic">Sistema de Proteção de Roupas Íntimas</p>
+
+      <!-- VISUAL DA GAVETA (ENCHE OU ESVAZIA SEM NÚMEROS) -->
+      <div class="mt-4 bg-purple-950/60 p-4 rounded-2xl border border-purple-900/40 drawer-active space-y-2">
+        <div class="flex justify-between text-xs font-bold">
+          <span class="text-purple-200/80">Estado da Gaveta</span>
+          <span class="text-purple-300 font-extrabold" x-text="statusTexto"></span>
+        </div>
+        
+        <!-- VISUAL DAS PEÇAS NA GAVETA -->
+        <div class="flex justify-center gap-1.5 py-2 text-2xl">
+          <template x-for="n in 8" :key="n">
+            <span :class="n <= pecasAtivas ? 'opacity-100 scale-100' : 'opacity-20 scale-90'" class="transition-all duration-500">🩲</span>
+          </template>
+        </div>
+
+        <div class="w-full bg-slate-900 rounded-full h-3 overflow-hidden p-0.5 border border-purple-900/30">
+          <div :class="barraCor" class="h-full rounded-full transition-all duration-500" :style="'width: ' + percentual + '%'"></div>
+        </div>
+      </div>
+    </header>
+
+    <!-- BANNER DE REVISÃO SEMANAL (QUARTAS E SÁBADOS) -->
+    <template x-if="modo === 'revisao'">
+      <div class="glass-card rounded-3xl p-6 shadow-xl border border-purple-500/40 space-y-4 text-center animate-fade-in">
+        <div class="space-y-1">
+          <span class="text-xs font-bold uppercase tracking-wider text-purple-400">Revisão de Quarta & Sábado</span>
+          <h2 class="text-lg font-black text-white">Como está sua gaveta de roupas íntimas hoje?</h2>
+        </div>
+
+        <div class="space-y-2.5 pt-2 text-xs">
+          <!-- OPÇÃO 1: VERDE -->
+          <button @click="responderRevisao('tranquila')" class="w-full p-4 bg-emerald-950/60 hover:bg-emerald-900/80 border border-emerald-800 text-emerald-200 rounded-2xl font-bold text-left flex items-center gap-3 transition">
+            <span class="text-2xl">🟢</span>
+            <div>
+              <div class="text-sm text-white">Estou tranquila</div>
+              <div class="text-[10px] text-emerald-300/80 font-normal">Estoque bom. Nada a fazer agora.</div>
+            </div>
+          </button>
+
+          <!-- OPÇÃO 2: AMARELO -->
+          <button @click="responderRevisao('diminuindo')" class="w-full p-4 bg-amber-950/60 hover:bg-amber-900/80 border border-amber-800 text-amber-200 rounded-2xl font-bold text-left flex items-center gap-3 transition">
+            <span class="text-2xl">🟡</span>
+            <div>
+              <div class="text-sm text-white">Está diminuindo</div>
+              <div class="text-[10px] text-amber-300/80 font-normal">Vale prestar atenção ou aproveitar lavagem prevista.</div>
+            </div>
+          </button>
+
+          <!-- OPÇÃO 3: VERMELHO -->
+          <button @click="responderRevisao('urgente')" class="w-full p-4 bg-rose-950/60 hover:bg-rose-900/80 border border-rose-800 text-rose-200 rounded-2xl font-bold text-left flex items-center gap-3 transition">
+            <span class="text-2xl">🔴</span>
+            <div>
+              <div class="text-sm text-white">Preciso lavar</div>
+              <div class="text-[10px] text-rose-300/80 font-normal">Hora de ativar a lavagem para recuperar o estoque.</div>
+            </div>
+          </button>
+        </div>
+      </div>
+    </template>
+
+    <!-- TELA QUANDO SELECIONA AMARELO (APROVEITAR OUTRA LAVAGEM) -->
+    <template x-if="modo === 'aproveitar_lavagem'">
+      <div class="glass-card rounded-3xl p-6 shadow-xl border border-amber-500/40 space-y-4 text-center">
+        <span class="text-4xl block">🧺</span>
+        <h3 class="text-base font-bold text-white">Existe alguma máquina de lavar prevista para hoje ou amanhã?</h3>
+        <p class="text-xs text-amber-200/70">Aproveitar um fluxo existente evita criar uma nova tarefa do zero.</p>
+
+        <div class="grid grid-cols-2 gap-3 pt-2 text-xs">
+          <button @click="confirmarAproveitamento(true)" class="py-4 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/50 text-emerald-300 font-bold rounded-2xl">
+            ✔ Sim (Vou aproveitar!)
+          </button>
+          <button @click="confirmarAproveitamento(false)" class="py-4 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 font-bold rounded-2xl">
+            ✖ Não tem lavagem
+          </button>
+        </div>
+      </div>
+    </template>
+
+    <!-- TELA MODO RECUPERAÇÃO DE ESTOQUE (PROCESSO DE LAVAGEM) -->
+    <template x-if="modo === 'executar_lavagem'">
+      <div class="glass-card rounded-3xl p-6 shadow-xl border border-purple-500/40 space-y-4">
+        <div class="flex justify-between items-center text-xs font-bold text-purple-400 uppercase tracking-wider">
+          <span>🚿 Recuperando o Estoque</span>
+          <span x-text="'Passo ' + (passoLavagem + 1) + ' de ' + passosLavagem.length"></span>
+        </div>
+
+        <div class="bg-purple-950/50 p-4 rounded-2xl border border-purple-900/60 space-y-2">
+          <div class="flex items-center gap-3">
+            <span class="text-3xl" x-text="passosLavagem[passoLavagem].icon"></span>
+            <div>
+              <h3 class="text-base font-bold text-white" x-text="passosLavagem[passoLavagem].titulo"></h3>
+              <p class="text-xs text-purple-200/70 mt-0.5" x-text="passosLavagem[passoLavagem].desc"></p>
+            </div>
+          </div>
+        </div>
+
+        <button @click="avancarPassoLavagem()" class="w-full py-5 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white font-black text-lg rounded-2xl shadow-lg transition active:scale-95">
+          ✔ CONCLUIR PASSO
+        </button>
+      </div>
+    </template>
+
+    <!-- TELA RESULTADO / RECURSO PROTEGIDO -->
+    <template x-if="modo === 'tranquilo'">
+      <div class="glass-card rounded-3xl p-6 shadow-xl text-center space-y-4 border border-emerald-500/40 bg-emerald-950/20">
+        <span class="text-5xl block">🌸✨</span>
+        <h2 class="text-xl font-black text-white">Conforto Protegido!</h2>
+        <p class="text-xs text-emerald-200">Seu estoque de roupas íntimas está seguro. Até a próxima revisão!</p>
+
+        <button @click="modo = 'revisao'" class="w-full py-3 bg-slate-800 hover:bg-slate-700 text-purple-200 font-bold rounded-xl text-xs transition border border-purple-900/40">
+          🔄 Fazer Nova Revisão Rápida
+        </button>
+      </div>
+    </template>
+
+  </div>
+
+  <!-- FIREBASE MODULE (PROJETO BENJAMIN-EXPRESS-OS) -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBoCzavo5Poj1kjKZbJ9rUwkLQyyjpMgmI",
+      authDomain: "benjamin-express-os.firebaseapp.com",
+      projectId: "benjamin-express-os",
+      storageBucket: "benjamin-express-os.firebasestorage.app",
+      messagingSenderId: "318003877871",
+      appId: "1:318003877871:web:54f4390f54c7710c5cc81a",
+      measurementId: "G-41JWT5ZN72"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    window.db = db;
+    window.doc = doc;
+    window.setDoc = setDoc;
+    window.onSnapshot = onSnapshot;
+  </script>
+
+  <!-- LÓGICA DO APP (AlpineJS) -->
+  <script>
+    function underwearApp() {
+      return {
+        loading: true,
+        modo: 'revisao', // 'revisao', 'aproveitar_lavagem', 'executar_lavagem', 'tranquilo'
+        estadoAtual: 'tranquila', // 'tranquila', 'diminuindo', 'urgente'
+        passoLavagem: 0,
+
+        passosLavagem: [
+          { titulo: 'Coletar Roupas Íntimas', icon: '🩲', desc: 'Juntar peças do cesto e levar para lavagem.' },
+          { titulo: 'Lavar Lote', icon: '🧺', desc: 'Colocar na máquina ou lavar saquinho delicado.' },
+          { titulo: 'Estender no Varal', icon: '☀️', desc: 'Pendurar para secar rápido.' },
+          { titulo: 'Guardar na Gaveta', icon: '🌸', desc: 'Devolver à gaveta e reabastecer o conforto!' }
+        ],
+
+        get pecasAtivas() {
+          if (this.estadoAtual === 'tranquila') return 8;
+          if (this.estadoAtual === 'diminuindo') return 4;
+          return 1;
+        },
+
+        get percentual() {
+          if (this.estadoAtual === 'tranquila') return 100;
+          if (this.estadoAtual === 'diminuindo') return 50;
+          return 15;
+        },
+
+        get statusTexto() {
+          if (this.estadoAtual === 'tranquila') return '🟢 Conforto 100% Protegido';
+          if (this.estadoAtual === 'diminuindo') return '🟡 Atenção: Estoque Baixo';
+          return '🔴 Crítico: Lavagem Necessária';
+        },
+
+        get barraCor() {
+          if (this.estadoAtual === 'tranquila') return 'bg-emerald-400';
+          if (this.estadoAtual === 'diminuindo') return 'bg-amber-400';
+          return 'bg-rose-500';
+        },
+
+        async initFirebase() {
+          const checkDb = setInterval(() => {
+            if (window.db) {
+              clearInterval(checkDb);
+              const docRef = window.doc(window.db, "modo_casa", "underwear_os");
+              window.onSnapshot(docRef, (docSnap) => {
+                if (docSnap.exists()) {
+                  const data = docSnap.data();
+                  this.modo = data.modo ?? 'revisao';
+                  this.estadoAtual = data.estadoAtual ?? 'tranquila';
+                  this.passoLavagem = data.passoLavagem ?? 0;
+                }
+                this.loading = false;
+              });
+            }
+          }, 100);
+        },
+
+        async saveState() {
+          if (!window.db) return;
+          const payload = {
+            modo: this.modo,
+            estadoAtual: this.estadoAtual,
+            passoLavagem: this.passoLavagem,
+            updatedAt: new Date().toISOString()
+          };
+          const docRef = window.doc(window.db, "modo_casa", "underwear_os");
+          await window.setDoc(docRef, payload, { merge: true });
+        },
+
+        responderRevisao(resposta) {
+          this.estadoAtual = resposta;
+          if (resposta === 'tranquila') {
+            this.modo = 'tranquilo';
+          } else if (resposta === 'diminuindo') {
+            this.modo = 'aproveitar_lavagem';
+          } else if (resposta === 'urgente') {
+            this.passoLavagem = 0;
+            this.modo = 'executar_lavagem';
+          }
+          this.saveState();
+        },
+
+        confirmarAproveitamento(aproveitar) {
+          if (aproveitar) {
+            this.passoLavagem = 0;
+            this.modo = 'executar_lavagem';
+          } else {
+            this.modo = 'tranquilo';
+          }
+          this.saveState();
+        },
+
+        avancarPassoLavagem() {
+          if (this.passoLavagem < this.passosLavagem.length - 1) {
+            this.passoLavagem++;
+          } else {
+            this.estadoAtual = 'tranquila';
+            this.modo = 'tranquilo';
+            this.passoLavagem = 0;
+          }
+          this.saveState();
+        }
+      }
+    }
+  </script>
+</body>
+</html>
